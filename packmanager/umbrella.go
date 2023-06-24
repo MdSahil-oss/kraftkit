@@ -7,10 +7,12 @@ package packmanager
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
 	"kraftkit.sh/log"
+
 	"kraftkit.sh/pack"
 	"kraftkit.sh/unikraft/component"
 )
@@ -219,4 +221,31 @@ func (u umbrella) IsCompatible(ctx context.Context, source string, qopts ...Quer
 
 func (u umbrella) Format() pack.PackageFormat {
 	return UmbrellaFormat
+}
+
+func (u umbrella) Show(ctx context.Context, outputFormat string, qopts ...QueryOption) (any, error) {
+	var metadatas []any
+	var errList []string
+
+	for _, manager := range packageManagers {
+		log.G(ctx).WithFields(logrus.Fields{
+			"format": manager.Format(),
+		}).Tracef("showing package information")
+
+		metadata, err := manager.Show(ctx, outputFormat, qopts...)
+		if err != nil {
+			errList = append(errList, err.Error())
+			log.G(ctx).
+				WithField("format", manager.Format()).
+				Debugf("could not run Show(): %v", err)
+			continue
+		}
+
+		metadatas = append(metadatas, metadata)
+	}
+	if len(metadatas) == 0 {
+		return nil, fmt.Errorf(strings.Join(errList, "\n"))
+	}
+
+	return metadatas[0], nil
 }
