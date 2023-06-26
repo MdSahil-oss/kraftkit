@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"time"
@@ -159,6 +160,40 @@ func (m *manifestManager) AddSource(ctx context.Context, source string) error {
 	}
 
 	m.manifests = append(m.manifests, source)
+
+	return nil
+}
+
+func (m *manifestManager) Prune(ctx context.Context, qopts ...packmanager.QueryOption) error {
+	sourcesDir := path.Join(config.G[config.KraftKit](ctx).Paths.Sources)
+	var query packmanager.Query
+
+	for _, qopt := range qopts {
+		qopt(&query)
+	}
+
+	if query.All() {
+		err := os.RemoveAll(sourcesDir)
+		if err != nil {
+			return err
+		}
+	} else {
+		packages, err := m.Catalog(ctx, packmanager.WithCache(true), packmanager.WithName(query.Name()), packmanager.WithVersion(query.Version()))
+		if err != nil {
+			return err
+		}
+		if len(packages) == 0 {
+			return fmt.Errorf("package not found locally")
+		}
+		for _, pack := range packages {
+			if query.Name() == pack.Name() && query.Version() == pack.Version() {
+				err = pack.Delete(ctx, query.Version())
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 
 	return nil
 }

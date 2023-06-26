@@ -123,6 +123,22 @@ func (u umbrella) AddSource(ctx context.Context, source string) error {
 	return nil
 }
 
+func (u umbrella) Prune(ctx context.Context, qopts ...QueryOption) error {
+	for _, manager := range packageManagers {
+		log.G(ctx).WithFields(logrus.Fields{
+			"format": manager.Format(),
+		}).Tracef("pruning")
+		err := manager.Prune(ctx, qopts...)
+		if err != nil {
+			log.G(ctx).
+				WithField("format", manager.Format()).
+				Debugf("could not run Prune:  %v", err)
+		}
+	}
+
+	return nil
+}
+
 func (u umbrella) RemoveSource(ctx context.Context, source string) error {
 	for _, manager := range packageManagers {
 		log.G(ctx).WithFields(logrus.Fields{
