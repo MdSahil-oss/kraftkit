@@ -7,7 +7,10 @@ package manifest
 import (
 	"context"
 	"fmt"
+	"os"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"kraftkit.sh/log"
 	"kraftkit.sh/pack"
@@ -96,6 +99,22 @@ func (mp mpack) Pull(ctx context.Context, opts ...pack.PullOption) error {
 	opts = append(opts, pack.WithPullVersion(mp.version))
 
 	return mp.manifest.Provider.PullManifest(ctx, mp.manifest, opts...)
+}
+
+func (mp mpack) Delete(ctx context.Context, version string) error {
+	cacheDir := mp.manifest.mopts.cacheDir
+	localAvailablePackages, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return err
+	}
+	for _, localPackage := range localAvailablePackages {
+		if strings.Contains(localPackage.Name(), mp.Name()) && strings.Contains(localPackage.Name(), mp.Version()) {
+			if err = os.Remove(path.Join(cacheDir, localPackage.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // resourceCacheChecksum returns the resource path, checksum and the cache
