@@ -11,7 +11,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -99,6 +102,39 @@ func (mp *ManifestProvider) Manifests() ([]*Manifest, error) {
 
 func (mp *ManifestProvider) PullManifest(ctx context.Context, manifest *Manifest, opts ...pack.PullOption) error {
 	manifest.mopts = mp.manifest.mopts
+	// var popts *pack.PullOptions
+	// TODO
+	// - calculate the version based on the opts
+	// - check if version source is directory
+	// - if source is directory, copy it.
+
+	popts, err := pack.NewPullOptions(opts...)
+	if err != nil {
+		return err
+	}
+	for _, channel := range manifest.Channels {
+		if channel.Name == popts.Version() && !strings.HasPrefix(channel.Resource, "http") {
+			fileInfo, err := os.Stat(channel.Resource)
+			if err != nil {
+				return err
+			}
+			libsDir := path.Join(popts.Workdir(), unikraft.LibsDir)
+
+			if _, err = os.Stat(libsDir); os.IsNotExist(err) {
+				if err = os.MkdirAll(libsDir, fileInfo.Mode().Perm()); err != nil {
+					return err
+				}
+			}
+
+			if fileInfo.IsDir() {
+				cmd := exec.Command("cp", "--recursive", channel.Resource, libsDir)
+				if err = cmd.Run(); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}
 
 	return pullArchive(ctx, manifest, opts...)
 }
@@ -178,12 +214,12 @@ func NewManifestFromFile(ctx context.Context, path string, mopts ...ManifestOpti
 
 	contents, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not read file: %w", err)
 	}
 
 	manifest, err := NewManifestFromBytes(ctx, contents, mopts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not decode manifest from bytes: %w", err)
 	}
 
 	// manifest.Origin = path
