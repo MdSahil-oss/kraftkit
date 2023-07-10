@@ -123,6 +123,9 @@ type Application interface {
 
 	// Serialize and save the application to the kraftfile
 	Save() error
+
+	// Add library to the application.
+	AddLibrary(context.Context, lib.LibraryConfig) error
 }
 
 type application struct {
@@ -781,6 +784,15 @@ func (app application) Save() error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (app application) AddLibrary(ctx context.Context, library lib.LibraryConfig) error {
+	if app.libraries == nil {
+		app.libraries = lib.Libraries(lib.Libraries{})
+	}
+	app.libraries[library.Name()] = &library
 
 	return nil
 }
