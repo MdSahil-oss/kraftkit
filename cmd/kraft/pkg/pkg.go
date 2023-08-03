@@ -30,6 +30,7 @@ import (
 	"kraftkit.sh/cmd/kraft/pkg/pull"
 	"kraftkit.sh/cmd/kraft/pkg/push"
 	"kraftkit.sh/cmd/kraft/pkg/remove"
+	"kraftkit.sh/cmd/kraft/pkg/show"
 	"kraftkit.sh/cmd/kraft/pkg/source"
 	"kraftkit.sh/cmd/kraft/pkg/unsource"
 	"kraftkit.sh/cmd/kraft/pkg/update"
@@ -87,6 +88,7 @@ func New() *cobra.Command {
 	cmd.AddCommand(add.New())
 	cmd.AddCommand(remove.New())
 	cmd.AddCommand(prune.New())
+	cmd.AddCommand(show.New())
 
 	return cmd
 }
