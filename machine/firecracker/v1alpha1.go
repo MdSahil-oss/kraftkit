@@ -7,8 +7,11 @@ package firecracker
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -78,6 +81,10 @@ func (service *machineV1alpha1Service) Create(ctx context.Context, machine *mach
 		return machine, fmt.Errorf("cannot create firecracker instance without kernel")
 	}
 
+	if machine.Spec.Emulation {
+		return machine, fmt.Errorf("cannot create firecracker instance with emulation")
+	}
+
 	if machine.ObjectMeta.UID == "" {
 		machine.ObjectMeta.UID = uuid.NewUUID()
 	}
@@ -88,8 +95,24 @@ func (service *machineV1alpha1Service) Create(ctx context.Context, machine *mach
 		machine.Status.StateDir = filepath.Join(config.G[config.KraftKit](ctx).RuntimeDir, string(machine.ObjectMeta.UID))
 	}
 
-	if err := os.MkdirAll(machine.Status.StateDir, 0o755); err != nil {
+	if err := os.MkdirAll(machine.Status.StateDir, fs.ModeSetgid|0o775); err != nil {
 		return machine, err
+	}
+
+	group, err := user.LookupGroup(config.G[config.KraftKit](ctx).UserGroup)
+	if err == nil {
+		gid, err := strconv.ParseInt(group.Gid, 10, 32)
+		if err != nil {
+			return machine, fmt.Errorf("could not parse group ID for kraftkit: %w", err)
+		}
+
+		if err := os.Chown(machine.Status.StateDir, os.Getuid(), int(gid)); err != nil {
+			return machine, fmt.Errorf("could not change group ownership of machine state dir: %w", err)
+		}
+	} else {
+		log.G(ctx).
+			WithField("error", err).
+			Warn("kraftkit group not found, falling back to current user")
 	}
 
 	// Set and create the log file for this machine

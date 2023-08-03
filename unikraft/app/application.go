@@ -126,10 +126,12 @@ type Application interface {
 
 	// Add library to the application.
 	AddLibrary(context.Context, lib.LibraryConfig) error
+	// Removes library from the project directory
+	RemoveLibrary(ctx context.Context, libraryName string) error
 }
 
 type application struct {
-	name          string
+	name          string `yaml:"name"`
 	version       string
 	source        string
 	path          string
@@ -137,9 +139,9 @@ type application struct {
 	filename      string
 	outDir        string
 	template      template.TemplateConfig
-	unikraft      core.UnikraftConfig
-	libraries     lib.Libraries
-	targets       []*target.TargetConfig
+	unikraft      core.UnikraftConfig    `yaml:"unikraft"`
+	libraries     lib.Libraries          `yaml:"libraries"`
+	targets       []*target.TargetConfig `yaml:"targets"`
 	kraftfile     *Kraftfile
 	configuration kconfig.KeyValueMap
 	extensions    component.Extensions
@@ -793,6 +795,49 @@ func (app application) AddLibrary(ctx context.Context, library lib.LibraryConfig
 		app.libraries = lib.Libraries(lib.Libraries{})
 	}
 	app.libraries[library.Name()] = &library
+	return nil
+}
 
+func (app application) RemoveLibrary(ctx context.Context, libraryName string) error {
+	for libKey, lib := range app.libraries {
+		if lib.Name() == libraryName {
+			var kraftfileValues application
+			yamlFile, err := os.ReadFile(app.kraftfile.path)
+			if err != nil {
+				return err
+			}
+			yamlFileInfo, err := os.Stat(app.kraftfile.path)
+			if err != nil {
+				return err
+			}
+
+			err = yaml.Unmarshal(yamlFile, &kraftfileValues)
+			if err != nil {
+				return err
+			}
+			delete(app.libraries, libKey)
+			delete(kraftfileValues.libraries, libraryName)
+
+			yaml, err := yaml.Marshal(&kraftfileValues)
+			if err != nil {
+				return err
+			}
+
+			// Write the YAML data to the file
+			err = os.WriteFile(app.kraftfile.path, []byte(yaml), yamlFileInfo.Mode().Perm())
+			if err != nil {
+				return err
+			}
+
+			// Remove library directory from the project directory
+			libPath := filepath.Join(app.WorkingDir(), unikraft.LibsDir, libraryName)
+			if _, err = os.Stat(libPath); err == nil {
+				err = os.RemoveAll(libPath)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }

@@ -7,8 +7,11 @@ package run
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
@@ -156,10 +159,11 @@ func (opts *Run) Pre(cmd *cobra.Command, _ []string) error {
 	if plat == "" || plat == "auto" {
 		var mode mplatform.SystemMode
 		opts.platform, mode, err = mplatform.Detect(ctx)
-		if mode == mplatform.SystemGuest && !opts.DisableAccel {
-			return fmt.Errorf("nested virtualization not supported")
-		} else if err != nil {
+		if err != nil {
 			return err
+		} else if mode == mplatform.SystemGuest {
+			log.G(ctx).Warn("using hardware emulation")
+			opts.DisableAccel = true
 		}
 	} else {
 		var ok bool
@@ -305,8 +309,24 @@ func (opts *Run) Run(cmd *cobra.Command, args []string) error {
 			machine.Status.StateDir = filepath.Join(config.G[config.KraftKit](ctx).RuntimeDir, string(machine.ObjectMeta.UID))
 		}
 
-		if err := os.MkdirAll(machine.Status.StateDir, 0o755); err != nil {
+		if err := os.MkdirAll(machine.Status.StateDir, fs.ModeSetgid|0o775); err != nil {
 			return fmt.Errorf("could not make machine state dir: %w", err)
+		}
+
+		group, err := user.LookupGroup(config.G[config.KraftKit](ctx).UserGroup)
+		if err == nil {
+			gid, err := strconv.ParseInt(group.Gid, 10, 32)
+			if err != nil {
+				return fmt.Errorf("could not parse group ID for kraftkit: %w", err)
+			}
+
+			if err := os.Chown(machine.Status.StateDir, os.Getuid(), int(gid)); err != nil {
+				return fmt.Errorf("could not change group ownership of machine state dir: %w", err)
+			}
+		} else {
+			log.G(ctx).
+				WithField("error", err).
+				Warn("kraftkit group not found, falling back to current user")
 		}
 
 		var ramfs *initrd.InitrdConfig

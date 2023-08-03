@@ -1,19 +1,35 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright (c) 2022, NEC Europe Ltd., Unikraft GmbH, and The KraftKit Authors.
+# Copyright (c) 2022, Unikraft GmbH and The KraftKit Authors.
 # Licensed under the BSD-3-Clause License (the "License").
 # You may not use this file except in compliance with the License.
+ARG GO_VERSION=1.20.6
 ARG DEBIAN_VERSION=bookworm-20230725
 ARG KRAFTKIT_VERSION=latest
 ARG QEMU_VERSION=7.2.4
 ARG REGISTRY=kraftkit.sh
 
-FROM ${REGISTRY}/qemu:${QEMU_VERSION}       AS qemu
-FROM ${REGISTRY}/myself:${KRAFTKIT_VERSION} AS kraftkit
-FROM debian:${DEBIAN_VERSION}               AS base
+FROM golang:${GO_VERSION}-bullseye AS build
 
-COPY --from=qemu     /bin/        /usr/local/bin
-COPY --from=qemu     /share/qemu/ /share/qemu
-COPY --from=kraftkit /kraft       /usr/local/bin
+COPY . /go/src/kraftkit.sh
+
+WORKDIR /go/src/kraftkit.sh/tools/github-action
+
+ENV GOROOT=/usr/local/go
+
+RUN set -xe; \
+    git config \
+        --global \
+        --add safe.directory /go/src/kraftkit.sh/tools/github-action; \
+    go build \
+        -o /github-action \
+        -a;
+
+FROM ${REGISTRY}/qemu:${QEMU_VERSION} AS qemu
+FROM debian:${DEBIAN_VERSION}         AS base
+
+COPY --from=qemu  /bin/          /usr/local/bin
+COPY --from=qemu  /share/qemu/   /share/qemu
+COPY --from=build /github-action /usr/local/bin/github-action
 
 # Install unikraft dependencies
 RUN set -xe; \
@@ -24,7 +40,6 @@ RUN set -xe; \
       bison \
       bzip2 \
       ca-certificates \
-      curl \
       flex \
       gawk \
       gcc-12 \
@@ -78,4 +93,4 @@ RUN ln -s /usr/bin/cpp-12                                   /usr/bin/cc; \
 
 WORKDIR /workspace
 
-ENTRYPOINT [ "kraft" ]
+ENTRYPOINT [ "/usr/local/bin/github-action" ]

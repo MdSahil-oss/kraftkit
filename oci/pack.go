@@ -8,8 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/crane"
@@ -73,8 +76,8 @@ func NewPackageFromTarget(ctx context.Context, targ target.Target, opts ...packm
 		command: popts.Args(),
 	}
 
-	if popts.Name() != "" {
-		ocipack.ref, err = name.ParseReference(popts.Name(),
+	if popts.Output() != "" {
+		ocipack.ref, err = name.ParseReference(popts.Output(),
 			name.WithDefaultRegistry(DefaultRegistry),
 		)
 	} else {
@@ -87,8 +90,12 @@ func NewPackageFromTarget(ctx context.Context, targ target.Target, opts ...packm
 		//     arch: x86_64
 		//     plat: kvm
 		// ```
+		n := targ.Name()
+		if popts.Name() != "" {
+			n = popts.Name()
+		}
 		ocipack.ref, err = name.ParseReference(
-			targ.Name(),
+			n,
 			name.WithDefaultRegistry(DefaultRegistry),
 		)
 	}
@@ -109,6 +116,26 @@ func NewPackageFromTarget(ctx context.Context, targ target.Target, opts ...packm
 
 		ctx, ocipack.handle, err = handler.NewContainerdHandler(ctx, contAddr, namespace)
 	} else {
+		if gerr := os.MkdirAll(config.G[config.KraftKit](ctx).RuntimeDir, fs.ModeSetgid|0o775); gerr != nil {
+			return nil, fmt.Errorf("could not create local oci cache directory: %w", gerr)
+		}
+
+		group, gerr := user.LookupGroup(config.G[config.KraftKit](ctx).UserGroup)
+		if gerr == nil {
+			gid, gerr := strconv.ParseInt(group.Gid, 10, 32)
+			if gerr != nil {
+				return nil, fmt.Errorf("could not parse group ID for kraftkit: %w", gerr)
+			}
+
+			if gerr := os.Chown(config.G[config.KraftKit](ctx).RuntimeDir, os.Getuid(), int(gid)); gerr != nil {
+				return nil, fmt.Errorf("could not change group ownership of machine state dir: %w", gerr)
+			}
+		} else {
+			log.G(ctx).
+				WithField("error", err).
+				Warn("kraftkit group not found, falling back to current user")
+		}
+
 		ociDir := filepath.Join(config.G[config.KraftKit](ctx).RuntimeDir, "oci")
 
 		log.G(ctx).WithFields(logrus.Fields{
@@ -163,9 +190,31 @@ func NewPackageFromTarget(ctx context.Context, targ target.Target, opts ...packm
 
 	if popts.Initrd() != "" {
 		log.G(ctx).Debug("oci: including initrd")
+		initRdPath := popts.Initrd()
+		if f, err := os.Stat(initRdPath); err == nil && f.IsDir() {
+			cwd, err2 := os.Getwd()
+			if err2 != nil {
+				return nil, err2
+			}
+
+			file, err := os.CreateTemp("", "kraftkit-oci-archive-*")
+			if err != nil {
+				return nil, err
+			}
+			defer os.Remove(file.Name())
+
+			cfg, err2 := initrd.NewFromMapping(cwd,
+				file.Name(),
+				fmt.Sprintf("%s:/", initRdPath))
+			if err2 != nil {
+				return nil, err2
+			}
+
+			initRdPath = cfg.Output
+		}
 		layer, err := NewLayerFromFile(ctx,
 			ocispec.MediaTypeImageLayer,
-			popts.Initrd(),
+			initRdPath,
 			WellKnownInitrdPath,
 			WithLayerAnnotation(AnnotationKernelInitrdPath, WellKnownInitrdPath),
 		)

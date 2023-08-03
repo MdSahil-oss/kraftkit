@@ -1,14 +1,13 @@
+//go:build darwin
+// +build darwin
+
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2022, Unikraft GmbH and The KraftKit Authors.
 // Licensed under the BSD-3-Clause License (the "License").
 // You may not use this file except in compliance with the License.
-syntax = "proto3";
+package platform
 
-package qmp.v1alpha;
-
-option go_package = "kraftkit.sh/machine/qemu/qmp/v1alpha;qmpv1alpha";
-
-message ErrorResponse {
-	string class       = 1 [ json_name = "class" ];
-	string cescription = 2 [ json_name = "desc" ];
+func unixVariantStrategies() map[Platform]*Strategy {
+	// Nothing added for Darwin
+	return map[Platform]*Strategy{}
 }
