@@ -3,6 +3,8 @@ package show
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path"
 	"reflect"
 	"strings"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 	"kraftkit.sh/cmdfactory"
+	"kraftkit.sh/config"
 	"kraftkit.sh/iostreams"
 	"kraftkit.sh/manifest"
 	"kraftkit.sh/packmanager"
@@ -84,23 +87,45 @@ func (opts *Show) Run(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if opts.Cache && len(origin) > 0 {
-			manifestStruct, err = manifest.NewManifestFromFile(ctx, origin)
+		if len(origin) > 0 && !strings.HasPrefix(origin, "http") {
+			var indexYaml manifest.ManifestIndex
+			manifestIndexYamlPath := path.Join(config.G[config.KraftKit](ctx).Paths.Manifests, "index.yaml")
+			indexbyteCode, err := os.ReadFile(manifestIndexYamlPath)
+			if err != nil {
+				return err
+			}
+			if err = yaml.Unmarshal(indexbyteCode, &indexYaml); err != nil {
+				return err
+			}
+			for _, manifestObj := range indexYaml.Manifests {
+				if args[0] == manifestObj.Name {
+					manifestYamlPath := path.Join(config.G[config.KraftKit](ctx).Paths.Manifests, manifestObj.Manifest)
+					byteCode, err = os.ReadFile(manifestYamlPath)
+					if err != nil {
+						return err
+					}
+					break
+				}
+			}
 		} else if len(origin) > 0 {
 			manifestStruct, err = manifest.NewManifestFromURL(ctx, origin)
+			if err != nil {
+				return err
+			}
+			if opts.Output == "json" {
+				byteCode, err = json.Marshal(manifestStruct)
+			} else {
+				byteCode, err = yaml.Marshal(manifestStruct)
+			}
+			if err != nil {
+				return err
+			}
 		}
-		if err != nil {
-			return err
-		}
-		if opts.Output == "json" {
-			byteCode, err = json.Marshal(manifestStruct)
+		if len(byteCode) > 0 {
+			fmt.Fprint(iostreams.G(ctx).Out, string(byteCode)+"\n")
 		} else {
-			byteCode, err = yaml.Marshal(manifestStruct)
+			return fmt.Errorf("no manifest found for package %s", args[0])
 		}
-		if err != nil {
-			return err
-		}
-		fmt.Fprint(iostreams.G(ctx).Out, string(byteCode)+"\n")
 	}
 	return nil
 }
