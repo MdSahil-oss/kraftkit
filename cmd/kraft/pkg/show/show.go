@@ -102,6 +102,9 @@ func (opts *Show) Run(cmd *cobra.Command, args []string) error {
 					manifestYamlPath := path.Join(config.G[config.KraftKit](ctx).Paths.Manifests, manifestObj.Manifest)
 					byteCode, err = os.ReadFile(manifestYamlPath)
 					manifestStruct, err = manifest.NewManifestFromBytes(ctx, byteCode)
+					if err != nil {
+						return err
+					}
 					break
 				}
 			}
@@ -115,9 +118,9 @@ func (opts *Show) Run(cmd *cobra.Command, args []string) error {
 			} else {
 				byteCode, err = yaml.Marshal(manifestStruct)
 			}
-		}
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
 		}
 		if opts.Output == "json" {
 			byteCode, err = json.Marshal(manifestStruct)
