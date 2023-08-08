@@ -89,7 +89,6 @@ func New() *cobra.Command {
 	cmd.AddCommand(remove.New())
 	cmd.AddCommand(prune.New())
 	cmd.AddCommand(show.New())
-
 	return cmd
 }
 

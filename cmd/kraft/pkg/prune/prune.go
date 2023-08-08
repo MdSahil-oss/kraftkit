@@ -75,12 +75,11 @@ func (opts *Prune) Run(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 
-	err := packmanager.G(ctx).Prune(ctx,
+	if err := packmanager.G(ctx).Prune(ctx,
 		packmanager.WithName(packName),
 		packmanager.WithVersion(version),
 		packmanager.WithAll(opts.All),
-	)
-	if err != nil {
+	); err != nil {
 		return err
 	}
 

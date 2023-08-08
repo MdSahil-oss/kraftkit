@@ -173,8 +173,7 @@ func (m *manifestManager) Prune(ctx context.Context, qopts ...packmanager.QueryO
 	}
 
 	if query.All() {
-		err := os.RemoveAll(sourcesDir)
-		if err != nil {
+		if err := os.RemoveAll(sourcesDir); err != nil {
 			return err
 		}
 	} else {
@@ -187,8 +186,7 @@ func (m *manifestManager) Prune(ctx context.Context, qopts ...packmanager.QueryO
 		}
 		for _, pack := range packages {
 			if query.Name() == pack.Name() && query.Version() == pack.Version() {
-				err = pack.Delete(ctx, query.Version())
-				if err != nil {
+				if err = pack.Delete(ctx, query.Version()); err != nil {
 					return err
 				}
 			}

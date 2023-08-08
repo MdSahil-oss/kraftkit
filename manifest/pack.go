@@ -109,11 +109,10 @@ func (mp mpack) Delete(ctx context.Context, version string) error {
 	}
 	for _, localPackage := range localAvailablePackages {
 		if strings.Contains(localPackage.Name(), mp.Name()) && strings.Contains(localPackage.Name(), mp.Version()) {
-			err = os.Remove(path.Join(cacheDir, localPackage.Name()))
+			if err = os.Remove(path.Join(cacheDir, localPackage.Name())); err != nil {
+				return err
+			}
 		}
-	}
-	if err != nil {
-		return err
 	}
 	return nil
 }
