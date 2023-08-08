@@ -113,10 +113,8 @@ func (t Template) Generate(ctx context.Context, workdir string) error {
 	}
 
 	// Creating projectName directory to store all the template files.
-	// libDir := workdir + t.ProjectName + "/"
 	libDir := path.Join(workdir, t.ProjectName)
-	err = os.Mkdir(libDir, os.ModePerm)
-	if err != nil {
+	if err = os.Mkdir(libDir, os.ModePerm); err != nil {
 		return err
 	}
 
@@ -152,33 +150,27 @@ func (t Template) Generate(ctx context.Context, workdir string) error {
 	}
 
 	// Executing Templates with Template struct values
-	err = codingStyleTmpl.Execute(codingStyleFile, t)
-	if err != nil {
+	if err = codingStyleTmpl.Execute(codingStyleFile, t); err != nil {
 		return err
 	}
 
-	err = configUkTmpl.Execute(configUkFile, t)
-	if err != nil {
+	if err = configUkTmpl.Execute(configUkFile, t); err != nil {
 		return err
 	}
 
-	err = contributingTmpl.Execute(contributingMdFile, t)
-	if err != nil {
+	if err = contributingTmpl.Execute(contributingMdFile, t); err != nil {
 		return err
 	}
 
-	err = copyingTmpl.Execute(copyingMdFile, t)
-	if err != nil {
+	if err = copyingTmpl.Execute(copyingMdFile, t); err != nil {
 		return err
 	}
 
-	err = readmeTmpl.Execute(readmeMdFile, t)
-	if err != nil {
+	if err = readmeTmpl.Execute(readmeMdFile, t); err != nil {
 		return err
 	}
 
-	err = makefileUkTmpl.Execute(makefileUkfile, t)
-	if err != nil {
+	if err = makefileUkTmpl.Execute(makefileUkfile, t); err != nil {
 		return err
 	}
 
@@ -193,24 +185,18 @@ func (t Template) Generate(ctx context.Context, workdir string) error {
 			return err
 		}
 
-		err = mainTmpl.Execute(mainFile, t)
-		if err != nil {
+		if err = mainTmpl.Execute(mainFile, t); err != nil {
 			return err
 		}
 	}
 
 	if t.WithPatchedir {
-		err = os.Mkdir(libDir+"patches", 0o644)
-		if err != nil {
+		if err = os.Mkdir(path.Join(libDir, "patches"), 0o644); err != nil {
 			return err
 		}
 	}
 
 	if t.GitInit {
-		if err != nil {
-			return err
-		}
-
 		// Save initial commit.
 		repo, err := git.PlainInit(libDir, false)
 		if err != nil {
@@ -223,8 +209,7 @@ func (t Template) Generate(ctx context.Context, workdir string) error {
 		}
 		repoConfig.Author.Name = t.AuthorName
 		repoConfig.Author.Email = t.AuthorEmail
-		err = repo.Storer.SetConfig(repoConfig)
-		if err != nil {
+		if err = repo.Storer.SetConfig(repoConfig); err != nil {
 			return err
 		}
 
@@ -257,24 +242,20 @@ func (t Template) Generate(ctx context.Context, workdir string) error {
 			return err
 		}
 		ref := plumbing.NewHashReference(plumbing.ReferenceName("refs/heads/"+t.InitialBranch), headRef.Hash())
-		err = repo.Storer.SetReference(ref)
-		if err != nil {
+		if err = repo.Storer.SetReference(ref); err != nil {
 			return err
 		}
-		err = repoWorktree.Checkout(&git.CheckoutOptions{
+		if err = repoWorktree.Checkout(&git.CheckoutOptions{
 			Branch: plumbing.ReferenceName("refs/heads/" + t.InitialBranch),
-		})
-		if err != nil {
+		}); err != nil {
 			return err
 		}
 
 		// Deleting `master` branch.
 		ref = plumbing.NewHashReference("refs/heads/master", headRef.Hash())
-		err = repo.Storer.RemoveReference(ref.Name())
-		if err != nil {
+		if err = repo.Storer.RemoveReference(ref.Name()); err != nil {
 			return err
 		}
-
 	}
 
 	return nil

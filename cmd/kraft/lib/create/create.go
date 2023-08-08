@@ -291,8 +291,7 @@ func (opts *Create) Run(cmd *cobra.Command, args []string) error {
 	// Packaging softly.
 	if opts.SoftPack {
 		packageManager := packmanager.G(ctx)
-		err = packageManager.AddSource(ctx, path.Join(opts.ProjectPath, opts.ProjectName))
-		if err != nil {
+		if err = packageManager.AddSource(ctx, path.Join(opts.ProjectPath, opts.ProjectName)); err != nil {
 			return err
 		}
 		config.G[config.KraftKit](ctx).Unikraft.Manifests = append(
@@ -302,8 +301,7 @@ func (opts *Create) Run(cmd *cobra.Command, args []string) error {
 		if err := config.M[config.KraftKit](ctx).Write(true); err != nil {
 			return err
 		}
-		err = packageManager.Update(ctx)
-		if err != nil {
+		if err = packageManager.Update(ctx); err != nil {
 			return err
 		}
 	}
