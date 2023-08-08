@@ -77,8 +77,7 @@ func (opts *Remove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = project.RemoveLibrary(ctx, args[0])
-	if err != nil {
+	if err = project.RemoveLibrary(ctx, args[0]); err != nil {
 		return err
 	}
 
