@@ -839,5 +839,6 @@ func (app application) RemoveLibrary(ctx context.Context, libraryName string) er
 			}
 		}
 	}
+
 	return nil
 }

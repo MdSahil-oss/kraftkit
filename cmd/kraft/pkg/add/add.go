@@ -89,15 +89,11 @@ func (opts *Add) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// pulls package
-	err = packs[0].Pull(ctx,
-		pack.WithPullWorkdir(workdir),
-	)
-	if err != nil {
+	if err = packs[0].Pull(ctx, pack.WithPullWorkdir(workdir)); err != nil {
 		return err
 	}
 
 	popts := []app.ProjectOption{}
-
 	if len(opts.Kraftfile) > 0 {
 		popts = append(popts, app.WithProjectKraftfile(opts.Kraftfile))
 	} else {
@@ -117,8 +113,7 @@ func (opts *Add) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = project.AddLibrary(ctx, library)
-	if err != nil {
+	if err = project.AddLibrary(ctx, library); err != nil {
 		return err
 	}
 
