@@ -20,7 +20,6 @@ import (
 
 type Show struct {
 	Output string `long:"output" short:"o" usage:"Set output format" default:"yaml"`
-	Cache  bool   `long:"local" short:"l" usage:"Search package details locally" default:"false"`
 }
 
 func New() *cobra.Command {
@@ -68,7 +67,7 @@ func (opts *Show) Run(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 
-	metadata, err := packmanager.G(ctx).Show(ctx, opts.Output, packmanager.WithCache(opts.Cache), packmanager.WithName(args[0]))
+	metadata, err := packmanager.G(ctx).Show(ctx, opts.Output, packmanager.WithName(args[0]))
 	if err != nil {
 		return err
 	}
@@ -101,6 +100,9 @@ func (opts *Show) Run(cmd *cobra.Command, args []string) error {
 				if args[0] == manifestObj.Name {
 					manifestYamlPath := path.Join(config.G[config.KraftKit](ctx).Paths.Manifests, manifestObj.Manifest)
 					byteCode, err = os.ReadFile(manifestYamlPath)
+					if err != nil {
+						return err
+					}
 					manifestStruct, err = manifest.NewManifestFromBytes(ctx, byteCode)
 					if err != nil {
 						return err
@@ -113,14 +115,6 @@ func (opts *Show) Run(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			if opts.Output == "json" {
-				byteCode, err = json.Marshal(manifestStruct)
-			} else {
-				byteCode, err = yaml.Marshal(manifestStruct)
-			}
-			if err != nil {
-				return err
-			}
 		}
 		if opts.Output == "json" {
 			byteCode, err = json.Marshal(manifestStruct)
@@ -130,11 +124,7 @@ func (opts *Show) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if len(byteCode) > 0 {
-			fmt.Fprint(iostreams.G(ctx).Out, string(byteCode)+"\n")
-		} else {
-			return fmt.Errorf("no manifest found for package %s", args[0])
-		}
+		fmt.Fprint(iostreams.G(ctx).Out, string(byteCode)+"\n")
 	}
 	return nil
 }
