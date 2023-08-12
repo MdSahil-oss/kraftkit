@@ -102,6 +102,19 @@ func (mp mpack) Pull(ctx context.Context, opts ...pack.PullOption) error {
 }
 
 func (mp mpack) Delete(ctx context.Context, version string) error {
+	for _, channel := range mp.manifest.Channels {
+		if channel.Name == version && !strings.HasPrefix(channel.Resource, "http") {
+			err := os.RemoveAll(channel.Resource)
+			return err
+		}
+	}
+	for _, verObj := range mp.manifest.Versions {
+		if verObj.Version == version && !strings.HasPrefix(verObj.Resource, "http") {
+			err := os.RemoveAll(verObj.Resource)
+			return err
+		}
+	}
+
 	cacheDir := mp.manifest.mopts.cacheDir
 	localAvailablePackages, err := os.ReadDir(cacheDir)
 	if err != nil {

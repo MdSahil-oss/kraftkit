@@ -43,7 +43,7 @@ jobs:
           outputs: type=docker,dest=/tmp/qemu-${{ matrix.QEMU_VERSION }}.tar
 
       - name: Upload Docker image artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: oci-images
           path: /tmp/qemu-${{ matrix.QEMU_VERSION }}.tar
@@ -64,7 +64,7 @@ jobs:
           driver: docker
 
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: oci-images
           path: /tmp
@@ -93,7 +93,7 @@ jobs:
             GIT_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
       - name: Fetch helloworld
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         if: ${{ github.event_name != 'push' }}
         with:
           repository: unikraft/app-helloworld

@@ -185,8 +185,8 @@ func (m *manifestManager) Prune(ctx context.Context, qopts ...packmanager.QueryO
 			return fmt.Errorf("package not found locally")
 		}
 		for _, pack := range packages {
-			if query.Name() == pack.Name() && query.Version() == pack.Version() {
-				if err = pack.Delete(ctx, query.Version()); err != nil {
+			if query.Name() == pack.Name() && (query.Version() == "" || query.Version() == pack.Version()) {
+				if err = pack.Delete(ctx, pack.Version()); err != nil {
 					return err
 				}
 			}

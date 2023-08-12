@@ -171,6 +171,10 @@ func (service *machineV1alpha1Service) Create(ctx context.Context, machine *mach
 		machine.Status.LogFile = filepath.Join(machine.Status.StateDir, "machine.log")
 	}
 
+	if machine.Spec.Resources.Requests == nil {
+		machine.Spec.Resources.Requests = make(corev1.ResourceList, 2)
+	}
+
 	if machine.Spec.Resources.Requests.Memory().Value() == 0 {
 		quantity, err := resource.ParseQuantity("64M")
 		if err != nil {
@@ -394,6 +398,9 @@ func (service *machineV1alpha1Service) Create(ctx context.Context, machine *mach
 
 	switch machine.Spec.Architecture {
 	case "x86_64", "amd64":
+		qopts = append(qopts,
+			WithDevice(QemuDevicePvpanic{}),
+		)
 		if machine.Spec.Emulation {
 			qopts = append(qopts,
 				WithMachine(QemuMachine{
@@ -678,6 +685,13 @@ func (service *machineV1alpha1Service) Watch(ctx context.Context, machine *machi
 				if !qcfg.NoShutdown {
 					break accept
 				}
+			case qmpapi.EVENT_GUEST_PANICKED:
+				machine.Status.State = machinev1alpha1.MachineStateErrored
+				events <- machine
+
+				if !qcfg.NoShutdown {
+					break accept
+				}
 			default:
 				errs <- fmt.Errorf("unsupported event: %s", event.Event)
 			}
@@ -841,7 +855,11 @@ func (service *machineV1alpha1Service) Get(ctx context.Context, machine *machine
 
 	// Map the QMP status to supported machine states
 	switch status.Return.Status {
-	case qmpapi.RUN_STATE_GUEST_PANICKED, qmpapi.RUN_STATE_INTERNAL_ERROR, qmpapi.RUN_STATE_IO_ERROR:
+	case qmpapi.RUN_STATE_GUEST_PANICKED:
+		state = machinev1alpha1.MachineStateErrored
+		exitCode = 1
+
+	case qmpapi.RUN_STATE_INTERNAL_ERROR, qmpapi.RUN_STATE_IO_ERROR:
 		state = machinev1alpha1.MachineStateFailed
 		exitCode = 1
 

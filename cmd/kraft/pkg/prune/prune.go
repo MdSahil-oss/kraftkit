@@ -65,9 +65,7 @@ func (opts *Prune) Run(cmd *cobra.Command, args []string) error {
 
 	if !opts.All {
 		packNameAndVersion := strings.Split(userPackage, ":")
-		if len(packNameAndVersion) < 2 {
-			version = "stable"
-		} else {
+		if len(packNameAndVersion) > 1 {
 			version = packNameAndVersion[1]
 		}
 		packName = packNameAndVersion[0]
@@ -83,5 +81,5 @@ func (opts *Prune) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return nil
+	return packmanager.G(ctx).Update(ctx)
 }
