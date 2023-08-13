@@ -203,7 +203,7 @@ func (opts *Create) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		if opts.GitInit && len(opts.Origin) == 0 {
-			input := textinput.New("Origin url (Make sure repository is newly created or empty):")
+			input := textinput.New("Origin url:")
 			input.Placeholder = "Enter origin url"
 			opts.Origin, err = input.RunPrompt()
 			if err != nil {
