@@ -161,6 +161,7 @@ func NewProjectFromOptions(ctx context.Context, opts ...ProjectOption) (Applicat
 		}
 
 		target.KConfig().OverrideBy(kvmap)
+		target.KraftfileConfig(popts.kraftfile.config)
 	}
 
 	project, err := NewApplicationFromOptions(
